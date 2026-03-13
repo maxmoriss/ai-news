@@ -1,0 +1,45 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+}
+
+const { title = "AI News" } = Astro.props;
+const siteTitle = title === "AI News" ? title : `${title} — AI News`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{siteTitle}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="min-h-screen bg-white">
+    <div class="max-w-2xl mx-auto px-6 py-12">
+      <header class="mb-16">
+        <a href={`${import.meta.env.BASE_URL}`} class="no-underline">
+          <h1 class="text-4xl font-bold tracking-tighter text-zinc-900">
+            AI News<span class="text-zinc-300">.</span>
+          </h1>
+          <p class="text-sm text-zinc-400 font-mono mt-1">daily briefing, zero fluff</p>
+        </a>
+      </header>
+      <main>
+        <slot />
+      </main>
+      <footer class="mt-20 pt-8 border-t border-zinc-100">
+        <p class="text-xs text-zinc-400 font-mono">
+          auto-generated daily via rss + ai · <a href="https://github.com/maxmoriss/ai-news" class="hover:text-zinc-600">src</a>
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>

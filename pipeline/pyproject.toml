@@ -1,0 +1,15 @@
+[project]
+name = "pipeline"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "feedparser>=6.0.12",
+    "openai>=2.26.0",
+    "python-dateutil>=2.9.0.post0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
