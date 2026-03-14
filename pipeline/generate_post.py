@@ -1,5 +1,5 @@
-import json
 import os
+import re
 from datetime import datetime, timezone
 
 from openai import OpenAI
@@ -30,9 +30,12 @@ def summarize_articles(articles: list[dict]) -> dict:
                     "For each story, include the source link inline as markdown. "
                     "End with a brief editorial take on the day's theme.\n\n"
                     f"Available tags (pick 2-4 most relevant): {tag_list}\n\n"
-                    "Respond with valid JSON:\n"
-                    '{"title": "short catchy title", "excerpt": "1-2 sentence summary", '
-                    '"tags": ["Tag1", "Tag2"], "content": "full markdown post body"}'
+                    "Format your response EXACTLY like this:\n"
+                    "TITLE: your short catchy title here\n"
+                    "EXCERPT: 1-2 sentence summary here\n"
+                    "TAGS: Tag1, Tag2, Tag3\n"
+                    "---\n"
+                    "your full markdown post body here"
                 ),
             },
             {
@@ -43,23 +46,33 @@ def summarize_articles(articles: list[dict]) -> dict:
         temperature=0.7,
     )
 
-    raw = response.choices[0].message.content or "{}"
-    raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1]
-        raw = raw.rsplit("```", 1)[0]
-    return json.loads(raw)
+    raw = response.choices[0].message.content or ""
+
+    title_match = re.search(r"TITLE:\s*(.+)", raw)
+    excerpt_match = re.search(r"EXCERPT:\s*(.+)", raw)
+    tags_match = re.search(r"TAGS:\s*(.+)", raw)
+    content_split = raw.split("---", 1)
+
+    title = title_match.group(1).strip() if title_match else "AI News Roundup"
+    excerpt = excerpt_match.group(1).strip() if excerpt_match else "Today's top AI stories."
+    tags = [t.strip() for t in tags_match.group(1).split(",")][:4] if tags_match else ["LLMs"]
+    content = content_split[1].strip() if len(content_split) > 1 else raw
+
+    return {"title": title, "excerpt": excerpt, "tags": tags, "content": content}
 
 
 def write_post(data: dict) -> str:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     slug = f"{today}-ai-news"
+
+    title = data["title"].replace('"', "'")
+    excerpt = data["excerpt"].replace('"', "'")
     tags_yaml = "\n".join(f'  - "{tag}"' for tag in data.get("tags", ["LLMs"]))
 
     frontmatter = f"""---
-title: "{data['title']}"
+title: "{title}"
 date: {today}
-excerpt: "{data['excerpt']}"
+excerpt: "{excerpt}"
 tags:
 {tags_yaml}
 ---"""
