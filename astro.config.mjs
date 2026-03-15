@@ -3,8 +3,7 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  site: 'https://maxmoriss.github.io',
-  base: '/ai-news',
+  site: 'https://news.maxmoriss.dev',
   vite: {
     plugins: [tailwindcss()],
   },
