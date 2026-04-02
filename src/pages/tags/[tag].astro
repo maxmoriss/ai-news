@@ -18,6 +18,8 @@ export async function getStaticPaths() {
 }
 
 const { tag, posts } = Astro.props;
+const tagSlug = tag.toLowerCase().replace(/\s+/g, "-");
+const initial = posts.slice(0, 10);
 ---
 
 <Base title={tag}>
@@ -26,13 +28,81 @@ const { tag, posts } = Astro.props;
     <h1 class="text-3xl font-bold tracking-tighter mt-4">{tag}</h1>
     <p class="text-sm text-zinc-400 font-mono mt-1">{posts.length} post{posts.length !== 1 ? "s" : ""}</p>
   </div>
-  {posts.map((post) => (
-    <PostCard
-      slug={post.id}
-      title={post.data.title}
-      date={post.data.date}
-      excerpt={post.data.excerpt}
-      tags={post.data.tags}
-    />
-  ))}
+  <div id="feed">
+    {initial.map((post) => (
+      <PostCard
+        slug={post.id}
+        title={post.data.title}
+        date={post.data.date}
+        excerpt={post.data.excerpt}
+        tags={post.data.tags}
+      />
+    ))}
+    <div id="sentinel" data-offset="10" data-src={`/api/tags/${tagSlug}.json`}></div>
+  </div>
+  <div id="loader" hidden class="flex justify-center py-8">
+    <span class="text-xs font-mono text-zinc-400 animate-pulse">loading...</span>
+  </div>
 </Base>
+
+<script>
+const PAGE_SIZE = 10;
+const sentinel = document.getElementById("sentinel");
+const feed = document.getElementById("feed");
+const loader = document.getElementById("loader");
+
+if (sentinel) {
+  let offset = parseInt(sentinel.dataset.offset);
+  const src = sentinel.dataset.src;
+  let allPosts = null;
+  let busy = false;
+
+  function formatDate(iso) {
+    return new Date(iso).toLocaleDateString("en-US", {
+      year: "numeric", month: "short", day: "numeric"
+    });
+  }
+
+  function renderCard(p) {
+    const tagHTML = p.tags.map(t =>
+      `<a href="/tags/${t.toLowerCase().replace(/\s+/g,'-')}" class="inline-block text-[11px] font-mono font-medium text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded no-underline hover:bg-zinc-200 hover:text-zinc-700 transition-colors">${t}</a>`
+    ).join("");
+    return `<article class="mb-12">
+      <a href="/posts/${p.slug}" class="no-underline group">
+        <h2 class="text-xl font-semibold tracking-tight text-zinc-900 group-hover:text-zinc-600 transition-colors mt-0 mb-1">${p.title}</h2>
+      </a>
+      <time class="text-xs font-mono text-zinc-400 block mb-2">${formatDate(p.date)}</time>
+      <p class="text-zinc-600 text-[15px] leading-relaxed mb-3">${p.excerpt}</p>
+      <div class="flex flex-wrap gap-1.5">${tagHTML}</div>
+    </article>`;
+  }
+
+  const observer = new IntersectionObserver(async ([entry]) => {
+    if (!entry.isIntersecting || busy) return;
+    busy = true;
+    loader.hidden = false;
+
+    if (!allPosts) allPosts = await fetch(src).then(r => r.json());
+
+    const slice = allPosts.slice(offset, offset + PAGE_SIZE);
+    if (slice.length === 0) {
+      sentinel.remove();
+      loader.hidden = true;
+      observer.disconnect();
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    const tmp = document.createElement("div");
+    slice.forEach(p => { tmp.innerHTML = renderCard(p); frag.appendChild(tmp.firstElementChild); });
+    feed.insertBefore(frag, sentinel);
+
+    offset += slice.length;
+    if (slice.length < PAGE_SIZE) { sentinel.remove(); observer.disconnect(); }
+    loader.hidden = true;
+    busy = false;
+  }, { rootMargin: "200px" });
+
+  observer.observe(sentinel);
+}
+</script>
